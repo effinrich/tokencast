@@ -17,10 +17,11 @@ action round-trip (see `app/routes/home.tsx`) is a genuine server-side data flow
 not a client-rendered stub — that round-trip is what the Save & Share feature later
 builds on for real.
 
-## Status
+## Live
 
-Core tool + Save & Share are live: paste tokens, get a live preview and export
-code, save a conversion and get back a real, server-rendered shareable link.
+**[tokencast.vercel.app](https://tokencast.vercel.app)** — paste tokens, get a live
+preview and export code, save a conversion and get back a real, server-rendered
+shareable link. Lighthouse: 100 accessibility, 99 performance.
 
 ## Tech stack
 
