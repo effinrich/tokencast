@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useFetcher } from "react-router";
 import { parseFigmaTokens } from "../lib/tokens/parse-figma-tokens";
 import { parseCssVars } from "../lib/tokens/parse-css-vars";
 import { parseTailwindConfig } from "../lib/tokens/parse-tailwind-config";
@@ -9,6 +10,7 @@ import { mapToPreviewTheme } from "../lib/tokens/preview-mapping";
 import { readableTextColor } from "../lib/tokens/readable-text-color";
 import { TokenParseError } from "../lib/tokens/errors";
 import type { TokenModel } from "../lib/tokens/model";
+import type { action as homeAction } from "../routes/home";
 
 type Format = "figma" | "css" | "tailwind";
 type ExportFormat = "tailwind" | "chakra" | "shadcn";
@@ -79,20 +81,32 @@ function generateExport(format: ExportFormat, model: TokenModel): string {
   }
 }
 
-export function TokenWorkbench() {
+interface TokenWorkbenchProps {
+  /** When set, the workbench opens on a fixed, previously-shared token set. */
+  initialModel?: TokenModel;
+  /** Shown as a banner when viewing a shared conversion. */
+  readOnlyBanner?: string;
+}
+
+export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchProps) {
+  const isSharedView = !!initialModel;
   const [format, setFormat] = useState<Format>("figma");
-  const [raw, setRaw] = useState(SAMPLE_INPUT.figma);
+  const [raw, setRaw] = useState(
+    initialModel ? JSON.stringify(initialModel, null, 2) : SAMPLE_INPUT.figma,
+  );
   const [exportFormat, setExportFormat] = useState<ExportFormat>("tailwind");
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const shareFetcher = useFetcher<typeof homeAction>();
 
   const { model, error } = useMemo(() => {
+    if (isSharedView) return { model: initialModel!, error: null as TokenParseError | null };
     try {
       return { model: parseByFormat(format, raw), error: null as TokenParseError | null };
     } catch (err) {
       if (err instanceof TokenParseError) return { model: null, error: err };
       throw err;
     }
-  }, [format, raw]);
+  }, [isSharedView, initialModel, format, raw]);
 
   const preview = model ? mapToPreviewTheme(model) : null;
   const exportOutput = model ? generateExport(exportFormat, model) : null;
@@ -125,6 +139,19 @@ export function TokenWorkbench() {
     URL.revokeObjectURL(url);
   }
 
+  function handleSaveAndShare() {
+    if (!model) return;
+    const formData = new FormData();
+    formData.set("model", JSON.stringify(model));
+    shareFetcher.submit(formData, { method: "post", action: "/?index" });
+  }
+
+  const shareResult = shareFetcher.data;
+  const shareUrl =
+    shareResult?.ok && typeof window !== "undefined"
+      ? `${window.location.origin}/t/${shareResult.slug}`
+      : null;
+
   return (
     <div className="flex flex-col min-h-screen bg-[#09090b] text-white">
       <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-[#09090b]">
@@ -142,149 +169,182 @@ export function TokenWorkbench() {
         </a>
       </header>
 
+      {readOnlyBanner && (
+        <div className="px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-300 text-xs flex items-center justify-between">
+          <span>{readOnlyBanner}</span>
+          <a href="/" className="underline hover:text-blue-200">
+            Start a new conversion
+          </a>
+        </div>
+      )}
+
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Left: Input */}
-      <section className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-white/10 flex flex-col bg-[#0c0c0e]">
-        <div className="p-4 flex items-center justify-between border-b border-white/10">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-white/60">
-            Design tokens
-          </h2>
-          <select
-            aria-label="Token input format"
-            value={format}
-            onChange={(e) => handleFormatChange(e.target.value as Format)}
-            className="appearance-none bg-white/5 border border-white/10 text-[11px] px-3 py-1 rounded-md cursor-pointer"
-          >
-            {(Object.keys(FORMAT_LABELS) as Format[]).map((f) => (
-              <option key={f} value={f}>
-                {FORMAT_LABELS[f]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <textarea
-          aria-label="Paste your design tokens"
-          spellCheck={false}
-          value={raw}
-          onChange={(e) => setRaw(e.target.value)}
-          placeholder="Paste your token data here…"
-          className="flex-1 p-6 bg-transparent font-mono text-[13px] leading-relaxed text-blue-100/80 outline-none resize-none placeholder:text-white/20"
-        />
-        {error && (
-          <div
-            role="alert"
-            data-testid="parse-error"
-            className="m-4 mt-0 p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs"
-          >
-            <p className="font-semibold mb-1">Couldn't parse that input</p>
-            <p>{error.message}</p>
-          </div>
-        )}
-      </section>
-
-      {/* Middle: Live preview */}
-      <section className="flex-1 flex flex-col bg-[#09090b]">
-        <div className="p-4 border-b border-white/10">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-white/60">
-            Live theme sandbox
-          </h2>
-        </div>
-        <div className="flex-1 p-8 flex items-center justify-center overflow-auto">
-          {preview ? (
-            <div className="w-full max-w-xl space-y-8" data-testid="live-preview">
-              <p className="text-[10px] text-white/50 uppercase font-bold tracking-[0.2em]">
-                Using: {preview.usedTokens.join(", ") || "no tokens found"}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  style={{
-                    backgroundColor: preview.primary ?? "#3b82f6",
-                    borderRadius: preview.radius ?? "8px",
-                    padding: preview.spacing ? `0.5rem ${preview.spacing}` : "0.5rem 1.25rem",
-                    color: readableTextColor(preview.primary ?? "#3b82f6"),
-                  }}
-                  className="text-sm font-medium"
-                >
-                  Primary button
-                </button>
-                <span
-                  style={{
-                    backgroundColor: preview.accent ?? preview.primary ?? "#3b82f6",
-                    borderRadius: "999px",
-                    color: readableTextColor(preview.accent ?? preview.primary ?? "#3b82f6"),
-                  }}
-                  className="px-3 py-1 text-[11px] font-bold"
-                >
-                  Badge
-                </span>
-              </div>
-              <div
-                style={{ borderRadius: preview.radius ?? "8px" }}
-                className="bg-[#121215] border border-white/10 p-6"
+        <section className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-white/10 flex flex-col bg-[#0c0c0e]">
+          <div className="p-4 flex items-center justify-between border-b border-white/10">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white/60">
+              Design tokens
+            </h2>
+            {!isSharedView && (
+              <select
+                aria-label="Token input format"
+                value={format}
+                onChange={(e) => handleFormatChange(e.target.value as Format)}
+                className="appearance-none bg-white/5 border border-white/10 text-[11px] px-3 py-1 rounded-md cursor-pointer"
               >
-                <h3 className="text-base font-semibold mb-2">Card preview</h3>
-                <p className="text-sm text-white/50">
-                  This card and the elements above are themed live from your pasted tokens.
-                </p>
-              </div>
-              <input
-                style={{ borderRadius: preview.radius ?? "8px" }}
-                className="w-full bg-[#18181b] border border-white/10 px-4 py-3 text-sm placeholder:text-white/50"
-                placeholder="Input preview"
-                readOnly
-              />
+                {(Object.keys(FORMAT_LABELS) as Format[]).map((f) => (
+                  <option key={f} value={f}>
+                    {FORMAT_LABELS[f]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <textarea
+            aria-label="Paste your design tokens"
+            spellCheck={false}
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            readOnly={isSharedView}
+            placeholder="Paste your token data here…"
+            className="flex-1 p-6 bg-transparent font-mono text-[13px] leading-relaxed text-blue-100/80 outline-none resize-none placeholder:text-white/20"
+          />
+          {error && (
+            <div
+              role="alert"
+              data-testid="parse-error"
+              className="m-4 mt-0 p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs"
+            >
+              <p className="font-semibold mb-1">Couldn't parse that input</p>
+              <p>{error.message}</p>
             </div>
-          ) : (
-            <p className="text-white/50 text-sm">Fix the input error to see a live preview.</p>
           )}
-        </div>
-      </section>
+        </section>
 
-      {/* Right: Export */}
-      <section className="w-full md:w-1/3 border-t md:border-t-0 md:border-l border-white/10 flex flex-col bg-[#0c0c0e]">
-        <div className="p-4 flex flex-col border-b border-white/10">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-white/60 mb-4">
-            Transpiled output
-          </h2>
-          <div className="flex p-1 bg-white/5 rounded-lg border border-white/10">
-            {(Object.keys(EXPORT_LABELS) as ExportFormat[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setExportFormat(f)}
-                aria-pressed={exportFormat === f}
-                className={`flex-1 py-1.5 text-[11px] font-semibold rounded transition-colors ${
-                  exportFormat === f ? "bg-white/10 text-white" : "text-white/60 hover:text-white"
-                }`}
-              >
-                {EXPORT_LABELS[f]}
-              </button>
-            ))}
+        {/* Middle: Live preview */}
+        <section className="flex-1 flex flex-col bg-[#09090b]">
+          <div className="p-4 border-b border-white/10">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white/60">
+              Live theme sandbox
+            </h2>
           </div>
-        </div>
-        <pre
-          data-testid="export-output"
-          className="flex-1 p-6 font-mono text-[12px] leading-relaxed text-emerald-400/90 overflow-auto whitespace-pre-wrap"
-        >
-          {exportOutput ?? "// Fix the input error to see generated output"}
-        </pre>
-        <div className="p-4 bg-[#09090b] border-t border-white/10 flex gap-2">
-          <button
-            onClick={handleCopy}
-            disabled={!exportOutput}
-            className="flex-1 py-2.5 bg-white text-black text-xs font-bold rounded-lg disabled:opacity-40"
+          <div className="flex-1 p-8 flex items-center justify-center overflow-auto">
+            {preview ? (
+              <div className="w-full max-w-xl space-y-8" data-testid="live-preview">
+                <p className="text-[10px] text-white/50 uppercase font-bold tracking-[0.2em]">
+                  Using: {preview.usedTokens.join(", ") || "no tokens found"}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    style={{
+                      backgroundColor: preview.primary ?? "#3b82f6",
+                      borderRadius: preview.radius ?? "8px",
+                      padding: preview.spacing ? `0.5rem ${preview.spacing}` : "0.5rem 1.25rem",
+                      color: readableTextColor(preview.primary ?? "#3b82f6"),
+                    }}
+                    className="text-sm font-medium"
+                  >
+                    Primary button
+                  </button>
+                  <span
+                    style={{
+                      backgroundColor: preview.accent ?? preview.primary ?? "#3b82f6",
+                      borderRadius: "999px",
+                      color: readableTextColor(preview.accent ?? preview.primary ?? "#3b82f6"),
+                    }}
+                    className="px-3 py-1 text-[11px] font-bold"
+                  >
+                    Badge
+                  </span>
+                </div>
+                <div
+                  style={{ borderRadius: preview.radius ?? "8px" }}
+                  className="bg-[#121215] border border-white/10 p-6"
+                >
+                  <h3 className="text-base font-semibold mb-2">Card preview</h3>
+                  <p className="text-sm text-white/50">
+                    This card and the elements above are themed live from your pasted tokens.
+                  </p>
+                </div>
+                <input
+                  style={{ borderRadius: preview.radius ?? "8px" }}
+                  className="w-full bg-[#18181b] border border-white/10 px-4 py-3 text-sm placeholder:text-white/50"
+                  placeholder="Input preview"
+                  readOnly
+                />
+              </div>
+            ) : (
+              <p className="text-white/50 text-sm">Fix the input error to see a live preview.</p>
+            )}
+          </div>
+        </section>
+
+        {/* Right: Export */}
+        <section className="w-full md:w-1/3 border-t md:border-t-0 md:border-l border-white/10 flex flex-col bg-[#0c0c0e]">
+          <div className="p-4 flex flex-col border-b border-white/10">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-white/60 mb-4">
+              Transpiled output
+            </h2>
+            <div className="flex p-1 bg-white/5 rounded-lg border border-white/10">
+              {(Object.keys(EXPORT_LABELS) as ExportFormat[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setExportFormat(f)}
+                  aria-pressed={exportFormat === f}
+                  className={`flex-1 py-1.5 text-[11px] font-semibold rounded transition-colors ${
+                    exportFormat === f ? "bg-white/10 text-white" : "text-white/60 hover:text-white"
+                  }`}
+                >
+                  {EXPORT_LABELS[f]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <pre
+            data-testid="export-output"
+            className="flex-1 p-6 font-mono text-[12px] leading-relaxed text-emerald-400/90 overflow-auto whitespace-pre-wrap"
           >
-            {copyStatus ?? "Copy configuration"}
-          </button>
-          <button
-            onClick={handleDownload}
-            disabled={!exportOutput}
-            aria-label="Download configuration"
-            className="p-2.5 border border-white/10 rounded-lg text-white/60 disabled:opacity-40"
-          >
-            Download
-          </button>
-        </div>
-      </section>
+            {exportOutput ?? "// Fix the input error to see generated output"}
+          </pre>
+          <div className="p-4 bg-[#09090b] border-t border-white/10 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={handleCopy}
+                disabled={!exportOutput}
+                className="flex-1 py-2.5 bg-white text-black text-xs font-bold rounded-lg disabled:opacity-40"
+              >
+                {copyStatus ?? "Copy configuration"}
+              </button>
+              <button
+                onClick={handleDownload}
+                disabled={!exportOutput}
+                aria-label="Download configuration"
+                className="p-2.5 border border-white/10 rounded-lg text-white/60 disabled:opacity-40"
+              >
+                Download
+              </button>
+            </div>
+            {!isSharedView && (
+              <button
+                onClick={handleSaveAndShare}
+                disabled={!model || shareFetcher.state !== "idle"}
+                className="py-2.5 border border-white/10 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 disabled:opacity-40"
+              >
+                {shareFetcher.state !== "idle" ? "Saving…" : "Save & share"}
+              </button>
+            )}
+            {shareResult && !shareResult.ok && (
+              <p role="alert" data-testid="share-error" className="text-rose-300 text-xs">
+                {shareResult.error}
+              </p>
+            )}
+            {shareUrl && (
+              <div data-testid="share-url" className="text-xs text-emerald-300 break-all">
+                Saved: <a href={shareUrl} className="underline">{shareUrl}</a>
+              </div>
+            )}
+          </div>
+        </section>
       </main>
 
       <footer className="h-8 border-t border-white/10 px-4 flex items-center gap-2 text-[10px] text-white/60 font-medium uppercase tracking-wider">
@@ -292,7 +352,7 @@ export function TokenWorkbench() {
           {error ? "Parse error" : "Parsed successfully"}
         </span>
         <span>·</span>
-        <span>{FORMAT_LABELS[format]}</span>
+        <span>{isSharedView ? "Shared view" : FORMAT_LABELS[format]}</span>
       </footer>
     </div>
   );

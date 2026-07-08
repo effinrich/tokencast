@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  # Public anon/publishable Supabase key + project URL — safe to be plain env
+  # vars, not secrets. RLS + the RPC-only design (see supabase/migrations/)
+  # is what actually gates access, not secrecy of these values.
+  SUPABASE_URL: https://seekioecboncdfhbcrcs.supabase.co
+  SUPABASE_ANON_KEY: sb_publishable_CxnMYSFNpao8oI0MstLZSQ_N-qJEyjP
+
 jobs:
   build:
     runs-on: ubuntu-latest
