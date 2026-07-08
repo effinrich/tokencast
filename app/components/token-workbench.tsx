@@ -161,12 +161,17 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
           </div>
           <h1 className="text-sm font-semibold tracking-tight">Tokencast</h1>
         </div>
-        <a
-          href="https://github.com/effinrich/tokencast"
-          className="text-white/50 hover:text-white text-xs transition-colors"
-        >
-          GitHub
-        </a>
+        <div className="flex items-center gap-4">
+          <a href="/docs" className="text-white/50 hover:text-white text-xs transition-colors">
+            Docs
+          </a>
+          <a
+            href="https://github.com/effinrich/tokencast"
+            className="text-white/50 hover:text-white text-xs transition-colors"
+          >
+            GitHub
+          </a>
+        </div>
       </header>
 
       {readOnlyBanner && (
