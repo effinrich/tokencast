@@ -8,20 +8,13 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
+// Self-hosted variable font (not Google Fonts CDN) — the CDN link here was
+// the scaffold template's default and was never swapped out. It added a
+// real, measured perf hit on the deployed site (extra third-party DNS+TLS
+// round trip, invisible on localhost) — same issue found and fixed on
+// MCP Atlas.
+import "@fontsource-variable/inter";
 import "./app.css";
-
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
