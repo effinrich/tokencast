@@ -1,5 +1,8 @@
 import { useMemo, useState } from "react";
 import { useFetcher } from "react-router";
+import { LiveThemeSandbox } from "./live-theme-sandbox";
+import { Button, Link } from "~/components/ui";
+import { cn } from "~/lib/cn";
 import { parseFigmaTokens } from "../lib/tokens/parse-figma-tokens";
 import { parseCssVars } from "../lib/tokens/parse-css-vars";
 import { parseTailwindConfig } from "../lib/tokens/parse-tailwind-config";
@@ -7,7 +10,6 @@ import { generateTailwindTheme } from "../lib/tokens/generate-tailwind-theme";
 import { generateChakraTheme } from "../lib/tokens/generate-chakra-theme";
 import { generateShadcnVars } from "../lib/tokens/generate-shadcn-vars";
 import { mapToPreviewTheme } from "../lib/tokens/preview-mapping";
-import { readableTextColor } from "../lib/tokens/readable-text-color";
 import { TokenParseError } from "../lib/tokens/errors";
 import type { TokenModel } from "../lib/tokens/model";
 import type { action as homeAction } from "../routes/home";
@@ -151,43 +153,44 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
     shareResult?.ok && typeof window !== "undefined"
       ? `${window.location.origin}/t/${shareResult.slug}`
       : null;
+  const isSaving = shareFetcher.state !== "idle";
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#09090b] text-white">
-      <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-[#09090b]">
+    <div className="flex min-h-screen flex-col bg-canvas text-primary">
+      <header className="flex items-center justify-between bg-surface px-6 py-3 shadow-subtle">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-xs">
+          <span className="flex size-7 items-center justify-center rounded-md bg-accent text-xs font-bold text-accent-foreground">
             T
-          </div>
+          </span>
           <h1 className="text-sm font-semibold tracking-tight">Tokencast</h1>
         </div>
-        <div className="flex items-center gap-4">
-          <a href="/docs" className="text-white/50 hover:text-white text-xs transition-colors">
+        <nav className="flex items-center gap-1">
+          <Link href="/docs" className="text-secondary hover:text-primary">
             Docs
-          </a>
-          <a
+          </Link>
+          <Link
             href="https://github.com/effinrich/tokencast"
-            className="text-white/50 hover:text-white text-xs transition-colors"
+            className="text-secondary hover:text-primary"
           >
             GitHub
-          </a>
-        </div>
+          </Link>
+        </nav>
       </header>
 
       {readOnlyBanner && (
-        <div className="px-4 py-2 bg-blue-500/10 border-b border-blue-500/20 text-blue-300 text-xs flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-accent/20 bg-accent-muted px-6 py-2 text-sm text-accent-foreground">
           <span>{readOnlyBanner}</span>
-          <a href="/" className="underline hover:text-blue-200">
+          <Link href="/" className="min-h-0 py-0 text-accent-foreground underline hover:text-accent-foreground/80">
             Start a new conversion
-          </a>
+          </Link>
         </div>
       )}
 
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <main className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {/* Left: Input */}
-        <section className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-white/10 flex flex-col bg-[#0c0c0e]">
-          <div className="p-4 flex items-center justify-between border-b border-white/10">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-white/60">
+        <section className="flex w-full flex-col bg-inset md:w-1/3 md:border-r md:border-surface">
+          <div className="flex items-center justify-between px-6 py-4">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
               Design tokens
             </h2>
             {!isSharedView && (
@@ -195,7 +198,7 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
                 aria-label="Token input format"
                 value={format}
                 onChange={(e) => handleFormatChange(e.target.value as Format)}
-                className="appearance-none bg-white/5 border border-white/10 text-[11px] px-3 py-1 rounded-md cursor-pointer"
+                className="min-h-11 cursor-pointer appearance-none rounded-md bg-elevated px-3 text-sm text-primary shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
               >
                 {(Object.keys(FORMAT_LABELS) as Format[]).map((f) => (
                   <option key={f} value={f}>
@@ -212,93 +215,64 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
             onChange={(e) => setRaw(e.target.value)}
             readOnly={isSharedView}
             placeholder="Paste your token data here…"
-            className="flex-1 p-6 bg-transparent font-mono text-[13px] leading-relaxed text-blue-100/80 outline-none resize-none placeholder:text-white/20"
+            className="min-h-48 flex-1 resize-none bg-transparent px-6 pb-6 font-mono text-sm leading-relaxed text-secondary outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
           />
           {error && (
             <div
               role="alert"
               data-testid="parse-error"
-              className="m-4 mt-0 p-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs"
+              className="mx-6 mb-6 rounded-lg bg-error-muted p-4 text-sm text-error shadow-subtle"
             >
-              <p className="font-semibold mb-1">Couldn't parse that input</p>
+              <p className="mb-1 font-semibold">Couldn&apos;t parse that input</p>
               <p>{error.message}</p>
             </div>
           )}
         </section>
 
         {/* Middle: Live preview */}
-        <section className="flex-1 flex flex-col bg-[#09090b]">
-          <div className="p-4 border-b border-white/10">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-white/60">
+        <section className="flex flex-1 flex-col bg-canvas">
+          <div className="px-6 py-4">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
               Live theme sandbox
             </h2>
           </div>
-          <div className="flex-1 p-8 flex items-center justify-center overflow-auto">
+          <div className="flex flex-1 justify-center overflow-auto px-6 pb-6 pt-2">
             {preview ? (
-              <div className="w-full max-w-xl space-y-8" data-testid="live-preview">
-                <p className="text-[10px] text-white/50 uppercase font-bold tracking-[0.2em]">
-                  Using: {preview.usedTokens.join(", ") || "no tokens found"}
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    style={{
-                      backgroundColor: preview.primary ?? "#3b82f6",
-                      borderRadius: preview.radius ?? "8px",
-                      padding: preview.spacing ? `0.5rem ${preview.spacing}` : "0.5rem 1.25rem",
-                      color: readableTextColor(preview.primary ?? "#3b82f6"),
-                    }}
-                    className="text-sm font-medium"
-                  >
-                    Primary button
-                  </button>
-                  <span
-                    style={{
-                      backgroundColor: preview.accent ?? preview.primary ?? "#3b82f6",
-                      borderRadius: "999px",
-                      color: readableTextColor(preview.accent ?? preview.primary ?? "#3b82f6"),
-                    }}
-                    className="px-3 py-1 text-[11px] font-bold"
-                  >
-                    Badge
-                  </span>
-                </div>
-                <div
-                  style={{ borderRadius: preview.radius ?? "8px" }}
-                  className="bg-[#121215] border border-white/10 p-6"
-                >
-                  <h3 className="text-base font-semibold mb-2">Card preview</h3>
-                  <p className="text-sm text-white/50">
-                    This card and the elements above are themed live from your pasted tokens.
-                  </p>
-                </div>
-                <input
-                  style={{ borderRadius: preview.radius ?? "8px" }}
-                  className="w-full bg-[#18181b] border border-white/10 px-4 py-3 text-sm placeholder:text-white/50"
-                  placeholder="Input preview"
-                  readOnly
-                />
-              </div>
+              <LiveThemeSandbox preview={preview} />
             ) : (
-              <p className="text-white/50 text-sm">Fix the input error to see a live preview.</p>
+              <p className="self-center text-sm text-muted">
+                Fix the input error to see a live preview.
+              </p>
             )}
           </div>
         </section>
 
         {/* Right: Export */}
-        <section className="w-full md:w-1/3 border-t md:border-t-0 md:border-l border-white/10 flex flex-col bg-[#0c0c0e]">
-          <div className="p-4 flex flex-col border-b border-white/10">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-white/60 mb-4">
+        <section className="flex w-full flex-col bg-inset md:w-1/3 md:border-l md:border-surface">
+          <div className="space-y-4 px-6 py-4">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
               Transpiled output
             </h2>
-            <div className="flex p-1 bg-white/5 rounded-lg border border-white/10">
+            <div
+              className="flex rounded-lg bg-elevated p-1 shadow-subtle"
+              role="tablist"
+              aria-label="Export format"
+            >
               {(Object.keys(EXPORT_LABELS) as ExportFormat[]).map((f) => (
                 <button
                   key={f}
+                  type="button"
+                  role="tab"
                   onClick={() => setExportFormat(f)}
                   aria-pressed={exportFormat === f}
-                  className={`flex-1 py-1.5 text-[11px] font-semibold rounded transition-colors ${
-                    exportFormat === f ? "bg-white/10 text-white" : "text-white/60 hover:text-white"
-                  }`}
+                  aria-selected={exportFormat === f}
+                  className={cn(
+                    "min-h-11 flex-1 rounded-md text-xs font-semibold transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
+                    exportFormat === f
+                      ? "bg-surface text-primary shadow-subtle"
+                      : "text-secondary hover:text-primary",
+                  )}
                 >
                   {EXPORT_LABELS[f]}
                 </button>
@@ -307,56 +281,63 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
           </div>
           <pre
             data-testid="export-output"
-            className="flex-1 p-6 font-mono text-[12px] leading-relaxed text-emerald-400/90 overflow-auto whitespace-pre-wrap"
+            className="flex-1 overflow-auto whitespace-pre-wrap px-6 pb-6 font-mono text-sm leading-relaxed text-success"
           >
             {exportOutput ?? "// Fix the input error to see generated output"}
           </pre>
-          <div className="p-4 bg-[#09090b] border-t border-white/10 flex flex-col gap-2">
+          <div className="space-y-2 bg-surface px-6 py-4 shadow-subtle">
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={handleCopy}
                 disabled={!exportOutput}
-                className="flex-1 py-2.5 bg-white text-black text-xs font-bold rounded-lg disabled:opacity-40"
+                className="flex-1"
               >
                 {copyStatus ?? "Copy configuration"}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={handleDownload}
                 disabled={!exportOutput}
                 aria-label="Download configuration"
-                className="p-2.5 border border-white/10 rounded-lg text-white/60 disabled:opacity-40"
               >
                 Download
-              </button>
+              </Button>
             </div>
             {!isSharedView && (
-              <button
+              <Button
+                variant="ghost"
                 onClick={handleSaveAndShare}
-                disabled={!model || shareFetcher.state !== "idle"}
-                className="py-2.5 border border-white/10 rounded-lg text-xs font-bold text-white/80 hover:bg-white/5 disabled:opacity-40"
+                disabled={!model || isSaving}
+                className="w-full border border-surface"
               >
-                {shareFetcher.state !== "idle" ? "Saving…" : "Save & share"}
-              </button>
+                {isSaving ? "Saving…" : "Save & share"}
+              </Button>
             )}
             {shareResult && !shareResult.ok && (
-              <p role="alert" data-testid="share-error" className="text-rose-300 text-xs">
+              <p role="alert" data-testid="share-error" className="text-sm text-error">
                 {shareResult.error}
               </p>
             )}
             {shareUrl && (
-              <div data-testid="share-url" className="text-xs text-emerald-300 break-all">
-                Saved: <a href={shareUrl} className="underline">{shareUrl}</a>
+              <div data-testid="share-url" className="break-all text-sm text-success">
+                Saved:{" "}
+                <Link href={shareUrl} className="min-h-0 py-0 underline">
+                  {shareUrl}
+                </Link>
               </div>
             )}
           </div>
         </section>
       </main>
 
-      <footer className="h-8 border-t border-white/10 px-4 flex items-center gap-2 text-[10px] text-white/60 font-medium uppercase tracking-wider">
-        <span data-testid="status-bar" className={error ? "text-rose-400" : "text-emerald-400"}>
+      <footer className="flex h-8 items-center gap-2 bg-inset px-6 text-xs font-medium uppercase tracking-wider text-muted">
+        <span
+          data-testid="status-bar"
+          className={error ? "text-error" : "text-success"}
+        >
           {error ? "Parse error" : "Parsed successfully"}
         </span>
-        <span>·</span>
+        <span aria-hidden>·</span>
         <span>{isSharedView ? "Shared view" : FORMAT_LABELS[format]}</span>
       </footer>
     </div>
