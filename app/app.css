@@ -59,3 +59,20 @@ html,
 body {
   @apply bg-canvas text-primary antialiased;
 }
+
+/* Interactive elements — pointer by default; not-allowed when disabled */
+button:not(:disabled),
+a[href],
+select:not(:disabled),
+label[for],
+summary,
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}

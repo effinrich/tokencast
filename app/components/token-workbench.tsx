@@ -156,40 +156,42 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
   const isSaving = shareFetcher.state !== "idle";
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas text-primary">
-      <header className="flex items-center justify-between bg-surface px-6 py-3 shadow-subtle">
-        <div className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-md bg-accent text-xs font-bold text-accent-foreground">
-            T
-          </span>
-          <h1 className="text-sm font-semibold tracking-tight">Tokencast</h1>
-        </div>
-        <nav className="flex items-center gap-1">
-          <Link href="/docs" className="text-secondary hover:text-primary">
-            Docs
-          </Link>
-          <Link
-            href="https://github.com/effinrich/tokencast"
-            className="text-secondary hover:text-primary"
-          >
-            GitHub
-          </Link>
-        </nav>
-      </header>
+    <div className="flex min-h-dvh flex-col bg-canvas text-primary md:h-dvh md:overflow-hidden">
+      <div className="sticky top-0 z-30 shrink-0 bg-canvas">
+        <header className="flex items-center justify-between bg-surface px-6 py-3 shadow-subtle">
+          <div className="flex items-center gap-2">
+            <span className="flex size-7 items-center justify-center rounded-md bg-accent text-xs font-bold text-accent-foreground">
+              T
+            </span>
+            <h1 className="text-sm font-semibold tracking-tight">Tokencast</h1>
+          </div>
+          <nav className="flex items-center gap-1">
+            <Link href="/docs" className="text-secondary hover:text-primary">
+              Docs
+            </Link>
+            <Link
+              href="https://github.com/effinrich/tokencast"
+              className="text-secondary hover:text-primary"
+            >
+              GitHub
+            </Link>
+          </nav>
+        </header>
 
-      {readOnlyBanner && (
-        <div className="flex items-center justify-between border-b border-accent/20 bg-accent-muted px-6 py-2 text-sm text-accent-foreground">
-          <span>{readOnlyBanner}</span>
-          <Link href="/" className="min-h-0 py-0 text-accent-foreground underline hover:text-accent-foreground/80">
-            Start a new conversion
-          </Link>
-        </div>
-      )}
+        {readOnlyBanner && (
+          <div className="flex items-center justify-between border-b border-accent/20 bg-accent-muted px-6 py-2 text-sm text-accent-foreground">
+            <span>{readOnlyBanner}</span>
+            <Link href="/" className="min-h-0 py-0 text-accent-foreground underline hover:text-accent-foreground/80">
+              Start a new conversion
+            </Link>
+          </div>
+        )}
+      </div>
 
-      <main className="flex flex-1 flex-col overflow-hidden md:flex-row">
-        {/* Left: Input */}
-        <section className="flex w-full flex-col bg-inset md:w-1/3 md:border-r md:border-surface">
-          <div className="flex items-center justify-between px-6 py-4">
+      <main className="flex min-h-0 flex-1 flex-col md:flex-row md:overflow-hidden">
+        {/* Left: Input — pinned on desktop; textarea scrolls inside the column */}
+        <section className="flex w-full min-h-0 flex-col bg-inset md:w-1/3 md:overflow-hidden md:border-r md:border-surface">
+          <div className="flex shrink-0 items-center justify-between px-6 py-4">
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
               Design tokens
             </h2>
@@ -215,13 +217,13 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
             onChange={(e) => setRaw(e.target.value)}
             readOnly={isSharedView}
             placeholder="Paste your token data here…"
-            className="min-h-48 flex-1 resize-none bg-transparent px-6 pb-6 font-mono text-sm leading-relaxed text-secondary outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
+            className="min-h-48 flex-1 resize-none overflow-y-auto bg-transparent px-6 pb-6 font-mono text-sm leading-relaxed text-secondary outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0"
           />
           {error && (
             <div
               role="alert"
               data-testid="parse-error"
-              className="mx-6 mb-6 rounded-lg bg-error-muted p-4 text-sm text-error shadow-subtle"
+              className="mx-6 mb-6 shrink-0 rounded-lg bg-error-muted p-4 text-sm text-error shadow-subtle"
             >
               <p className="mb-1 font-semibold">Couldn&apos;t parse that input</p>
               <p>{error.message}</p>
@@ -229,14 +231,14 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
           )}
         </section>
 
-        {/* Middle: Live preview */}
-        <section className="flex flex-1 flex-col bg-canvas">
-          <div className="px-6 py-4">
+        {/* Middle: Live preview — sole vertical scroll region on desktop */}
+        <section className="flex min-h-0 flex-1 flex-col bg-canvas md:overflow-y-auto">
+          <div className="shrink-0 px-6 py-4">
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
               Live theme sandbox
             </h2>
           </div>
-          <div className="flex flex-1 justify-center overflow-auto px-6 pb-6 pt-2">
+          <div className="flex justify-center px-6 pb-6 pt-2">
             {preview ? (
               <LiveThemeSandbox preview={preview} />
             ) : (
@@ -247,9 +249,9 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
           </div>
         </section>
 
-        {/* Right: Export */}
-        <section className="flex w-full flex-col bg-inset md:w-1/3 md:border-l md:border-surface">
-          <div className="space-y-4 px-6 py-4">
+        {/* Right: Export — pinned on desktop; output scrolls inside the column */}
+        <section className="flex w-full min-h-0 flex-col bg-inset md:w-1/3 md:overflow-hidden md:border-l md:border-surface">
+          <div className="shrink-0 space-y-4 px-6 py-4">
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted">
               Transpiled output
             </h2>
@@ -281,11 +283,11 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
           </div>
           <pre
             data-testid="export-output"
-            className="flex-1 overflow-auto whitespace-pre-wrap px-6 pb-6 font-mono text-sm leading-relaxed text-success"
+            className="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap px-6 pb-6 font-mono text-sm leading-relaxed text-success"
           >
             {exportOutput ?? "// Fix the input error to see generated output"}
           </pre>
-          <div className="space-y-2 bg-surface px-6 py-4 shadow-subtle">
+          <div className="shrink-0 space-y-2 bg-surface px-6 py-4 shadow-subtle">
             <div className="flex gap-2">
               <Button
                 onClick={handleCopy}
@@ -330,7 +332,7 @@ export function TokenWorkbench({ initialModel, readOnlyBanner }: TokenWorkbenchP
         </section>
       </main>
 
-      <footer className="flex h-8 items-center gap-2 bg-inset px-6 text-xs font-medium uppercase tracking-wider text-muted">
+      <footer className="flex h-8 shrink-0 items-center gap-2 bg-inset px-6 text-xs font-medium uppercase tracking-wider text-muted">
         <span
           data-testid="status-bar"
           className={error ? "text-error" : "text-success"}
